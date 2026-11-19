@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Own-It | License original art</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f6f4ee;color:#20251e;font:16px/1.5 system-ui,sans-serif}header,main,footer{max-width:1050px;margin:auto;padding-inline:24px}header{display:flex;justify-content:space-between;align-items:center;padding-block:20px;border-bottom:1px solid #dcded3}header strong{font-size:24px;letter-spacing:-.06em}button,select{font:inherit}button{cursor:pointer;border:0;border-radius:9px;padding:12px 17px;font-weight:700;background:#253b2b;color:white}button:hover{background:#365640}header button,.secondary{background:#e7eade;color:#253b2b}header button:hover,.secondary:hover{background:#d8e0ce}main{padding-block:42px}h1{font:clamp(42px,7vw,75px)/1 Georgia,serif;letter-spacing:-.06em;margin:0 0 12px}p{margin:0 0 16px;color:#4e584c}.listing{display:grid;grid-template-columns:1.15fr 1fr;gap:32px;margin-top:30px;align-items:center}.art{width:100%;display:block;border-radius:15px;background:#bdd4aa;aspect-ratio:4/3}h2{font:36px/1.1 Georgia,serif;margin:0 0 8px}label{font-weight:700;display:block;margin:16px 0 6px}select{width:100%;padding:10px;color:inherit;background:white;border:1px solid #bdc6b7;border-radius:8px}#terms{min-height:48px;margin-top:10px}dialog{width:min(480px,calc(100% - 32px));border:0;border-radius:16px;padding:26px;background:#f6f4ee;color:inherit}dialog::backdrop{background:#18251cc0}.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}li{margin-bottom:10px}footer{border-top:1px solid #dcded3;padding-block:15px;color:#4e584c}@media(max-width:680px){main{padding-block:28px}.listing{grid-template-columns:1fr;gap:20px}}
+</style>
+</head>
+<body>
+<header><strong>Own-It</strong><button id="library">My licenses</button></header>
+<main>
+<h1>License original art.</h1>
+<p>Choose how you’ll use a work and keep a receipt with the terms.</p>
+<section class="listing" aria-labelledby="work">
+<canvas class="art" id="art" width="800" height="600" role="img" aria-label="Illustration of a rising sun over layered green hills"></canvas>
+<div><h2 id="work">Above the Valley</h2><p>Digital illustration · Studio Fern (sample creator)</p>
+<label for="plan">How will you use it?</label>
+<select id="plan"><option value="personal">Personal use · $5</option><option value="commercial">Small business use · $15</option></select>
+<p id="terms" aria-live="polite"></p>
+<button id="checkout">Continue</button></div>
+</section>
+</main>
+<footer>Demo only. Payments and license rights are simulated.</footer>
+<dialog id="modal" aria-labelledby="dialogTitle"><h2 id="dialogTitle"></h2><div id="detail"></div><div class="actions"><button id="action"></button><form method="dialog"><button class="secondary">Close</button></form></div></dialog>
+<script>
+const byId = id => document.getElementById(id);
+const canvas = byId('art');
+const ctx = canvas.getContext('2d');
+ctx.fillStyle = '#bdd4aa';
+ctx.fillRect(0,0,800,600);
+ctx.fillStyle = '#ffda82';
+ctx.beginPath();
+ctx.arc(560,178,88,0,2*Math.PI);
+ctx.fill();
+for (const [color,height,offset] of [['#719477',315,0],['#487657',390,2],['#264f42',470,4]]) {
+  ctx.beginPath();
+  ctx.moveTo(0,600);
+  for (let x=0;x<=800;x+=4) {
+    ctx.lineTo(x,height+Math.sin(x/148+offset)*67+Math.cos(x/76+offset)*14);
+  }
+  ctx.lineTo(800,600);
+  ctx.fillStyle=color;
+  ctx.fill();
+}
+const plans = {
+  personal: { name:'Personal use', price:5, terms:'Personal projects and noncommercial social posts. Resale excluded.' },
+  commercial: { name:'Small business use', price:15, terms:'One website or digital campaign for one business. Resale excluded.' }
+};
+const plan = byId('plan');
+const modal = byId('modal');
+const action = byId('action');
+const detail = byId('detail');
+const storageKey = 'own-it-demo-receipts';
+let receipts = [];
+try { receipts = JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch {}
+function refresh() {
+  const selected = plans[plan.value];
+  byId('terms').textContent = selected.terms;
+  byId('checkout').textContent = 'Continue · $' + selected.price;
+}
+function show(title, message, label, handler) {
+  byId('dialogTitle').textContent = title;
+  detail.replaceChildren();
+  const p = document.createElement('p');
+  p.textContent = message;
+  detail.append(p);
+  action.hidden = !label;
+  action.textContent = label || '';
+  action.onclick = handler || null;
+  if (!modal.open) modal.showModal();
+}
+function download(receipt) {
+  const lines = ['Own-It demo receipt', receipt.id, 'Above the Valley — Studio Fern (sample creator)', receipt.name + ' · $' + receipt.price + ' simulated', receipt.terms, 'Demo only. No payment or legal rights were transferred.'];
+  const url = URL.createObjectURL(new Blob([lines.join('\n')], {type:'text/plain'}));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = receipt.id + '.txt';
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url),1000);
+}
+plan.onchange = refresh;
+byId('checkout').onclick = () => {
+  const selected = plans[plan.value];
+  show('Review checkout', 'Above the Valley · ' + selected.name + ' · $' + selected.price + '. ' + selected.terms, 'Confirm demo checkout', () => {
+    const receipt = {...selected,id:'OWN-' + Date.now().toString(36).toUpperCase()};
+    receipts.push(receipt);
+    let saved = true;
+    try { localStorage.setItem(storageKey,JSON.stringify(receipts)); } catch { saved = false; }
+    show('Demo checkout complete', receipt.id + (saved ? ' is saved in My licenses.' : ' is available for download.'), 'Download receipt', () => download(receipt));
+  });
+};
+byId('library').onclick = () => {
+  show('My licenses', receipts.length ? 'Download a demo receipt.' : 'Your demo receipts will appear here.');
+  if (!receipts.length) return;
+  const list = document.createElement('ul');
+  for (const receipt of [...receipts].reverse()) {
+    const item = document.createElement('li');
+    const button = document.createElement('button');
+    button.className = 'secondary';
+    button.textContent = receipt.name + ' · ' + receipt.id;
+    button.onclick = () => download(receipt);
+    item.append(button);
+    list.append(item);
+  }
+  detail.append(list);
+};
+refresh();
+</script>
+</body>
+</html>
